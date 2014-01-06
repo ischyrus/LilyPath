@@ -1,6 +1,8 @@
 ﻿using System;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework;
+using System.Collections.Generic;
+using LilyPath.Utility;
 
 namespace LilyPath
 {
@@ -16,6 +18,27 @@ namespace LilyPath
         public PrimitivePen (Color color)
             : base(color, 1)
         { }
+    }
+
+    internal struct InsetOutsetCount
+    {
+        public readonly short InsetCount;
+        public readonly short OutsetCount;
+        public readonly bool CCW;
+
+        public InsetOutsetCount (short insetCount, short outsetCount)
+        {
+            InsetCount = insetCount;
+            OutsetCount = outsetCount;
+            CCW = true;
+        }
+
+        public InsetOutsetCount (short insetCount, short outsetCount, bool ccw)
+        {
+            InsetCount = insetCount;
+            OutsetCount = outsetCount;
+            CCW = ccw;
+        }
     }
 
     /// <summary>
@@ -295,7 +318,34 @@ namespace LilyPath
             return Brush.Color;
         }
 
+        internal Color ColorAt (Vector2 uv)
+        {
+            return ColorAt(uv.X, uv.Y);
+        }
+
+        internal int StartPointVertexBound ()
+        {
+            switch (StartCap) {
+                case LineCap.Flat:
+                case LineCap.Square:
+                    return 2;
+            }
+
+            return 0;
+        }
+
         internal int StartPointVertexBound (Vector2 a, Vector2 b)
+        {
+            switch (StartCap) {
+                case LineCap.Flat:
+                case LineCap.Square:
+                    return 2;
+            }
+
+            return 0;
+        }
+
+        internal int EndPointVertexBound ()
         {
             switch (StartCap) {
                 case LineCap.Flat:
@@ -312,6 +362,18 @@ namespace LilyPath
                 case LineCap.Flat:
                 case LineCap.Square:
                     return 2;
+            }
+
+            return 0;
+        }
+
+        internal int LineJoinVertexBound ()
+        {
+            switch (LineJoin) {
+                case LineJoin.Miter:
+                    return 3;
+                case LineJoin.Bevel:
+                    return 3;
             }
 
             return 0;
@@ -399,7 +461,7 @@ namespace LilyPath
             return extra * 3 + (pointCount - 1) * 6;
         }
 
-        internal int ComputeMiter (Vector2[] outputBuffer, Color[] colorBuffer, int outputIndex, Vector2 a, Vector2 b, Vector2 c)
+        internal InsetOutsetCount ComputeMiter (Vector2 a, Vector2 b, Vector2 c, PenWorkspace ws)
         {
             Vector2 edgeAB = new Vector2(b.X - a.X, b.Y - a.Y);
             edgeAB.Normalize();
@@ -468,20 +530,18 @@ namespace LilyPath
 
             double miterLimit = MiterLimit * Width;
             if ((point0 - point5).LengthSquared() > miterLimit * miterLimit)
-                return ComputeBevel(outputBuffer, colorBuffer, outputIndex, a, b, c);
+                return ComputeBevel(a, b, c, ws);
 
-            outputBuffer[outputIndex + 0] = point0;
-            outputBuffer[outputIndex + 1] = point5;
+            ws.XYInsetBuffer[0] = point0;
+            ws.XYOutsetBuffer[0] = point5;
 
-            if (colorBuffer != null) {
-                colorBuffer[outputIndex + 0] = ColorAt(0, 0);
-                colorBuffer[outputIndex + 1] = ColorAt(1, 0);
-            }
+            ws.UVInsetBuffer[0] = new Vector2(0, 0);
+            ws.UVOutsetBuffer[0] = new Vector2(1, 0);
 
-            return 2;
+            return new InsetOutsetCount(1, 1);
         }
 
-        internal int ComputeBevel (Vector2[] outputBuffer, Color[] colorBuffer, int outputIndex, Vector2 a, Vector2 b, Vector2 c)
+        internal InsetOutsetCount ComputeBevel (Vector2 a, Vector2 b, Vector2 c, PenWorkspace ws)
         {
             Vector2 edgeBA = new Vector2(a.X - b.X, a.Y - b.Y);
             Vector2 edgeBC = new Vector2(c.X - b.X, c.Y - b.Y);
@@ -491,7 +551,7 @@ namespace LilyPath
                 double cos2 = (dot * dot) / den;
 
                 if (cos2 > _joinLimitCos2)
-                    return ComputeMiter(outputBuffer, colorBuffer, outputIndex, a, b, c);
+                    return ComputeMiter(a, b, c, ws);
             }
 
             Vector2 edgeAB = new Vector2(b.X - a.X, b.Y - a.Y);
@@ -504,7 +564,7 @@ namespace LilyPath
             Vector2 pointA = a;
             Vector2 pointC = c;
 
-            int vertexCount = 0;
+            short vertexCount = 0;
 
             if (Cross2D(edgeAB, edgeBC) > 0) {
                 switch (Alignment) {
@@ -513,36 +573,26 @@ namespace LilyPath
                         pointA = new Vector2(a.X - w2 * edgeABt.X, a.Y - w2 * edgeABt.Y);
                         pointC = new Vector2(c.X - w2 * edgeBCt.X, c.Y - w2 * edgeBCt.Y);
 
-                        outputBuffer[outputIndex + 1] = new Vector2(b.X + w2 * edgeABt.X, b.Y + w2 * edgeABt.Y);
-                        outputBuffer[outputIndex + 2] = new Vector2(b.X + w2 * edgeBCt.X, b.Y + w2 * edgeBCt.Y);
+                        ws.XYInsetBuffer[0] = new Vector2(b.X + w2 * edgeABt.X, b.Y + w2 * edgeABt.Y);
+                        ws.XYInsetBuffer[1] = new Vector2(b.X + w2 * edgeBCt.X, b.Y + w2 * edgeBCt.Y);
 
-                        if (colorBuffer != null) {
-                            colorBuffer[outputIndex + 1] = ColorAt(0, 0);
-                            colorBuffer[outputIndex + 2] = ColorAt(0, 0);
-                        }
-                        vertexCount = -3;
+                        vertexCount = 2;
                         break;
 
                     case PenAlignment.Inset:
-                        outputBuffer[outputIndex + 1] = new Vector2(b.X + Width * edgeABt.X, b.Y + Width * edgeABt.Y);
-                        outputBuffer[outputIndex + 2] = new Vector2(b.X + Width * edgeBCt.X, b.Y + Width * edgeBCt.Y);
+                        ws.XYInsetBuffer[0] = new Vector2(b.X + Width * edgeABt.X, b.Y + Width * edgeABt.Y);
+                        ws.XYInsetBuffer[1] = new Vector2(b.X + Width * edgeBCt.X, b.Y + Width * edgeBCt.Y);
 
-                        if (colorBuffer != null) {
-                            colorBuffer[outputIndex + 1] = ColorAt(0, 0);
-                            colorBuffer[outputIndex + 2] = ColorAt(1, 0);
-                        }
-                        vertexCount = -3;
+                        vertexCount = 2;
                         break;
 
                     case PenAlignment.Outset:
                         pointA = new Vector2(a.X - Width * edgeABt.X, a.Y - Width * edgeABt.Y);
                         pointC = new Vector2(c.X - Width * edgeBCt.X, c.Y - Width * edgeBCt.Y);
 
-                        if (colorBuffer != null) {
-                            colorBuffer[outputIndex + 1] = ColorAt(0, 0);
-                        }
-                        outputBuffer[outputIndex + 1] = b;
-                        vertexCount = -2;
+                        ws.XYInsetBuffer[0] = b;
+
+                        vertexCount = 1;
                         break;
                 }
 
@@ -559,12 +609,13 @@ namespace LilyPath
                     point5 = new Vector2(pointA.X + t5 * edgeAB.X, pointA.Y + t5 * edgeAB.Y);
                 }
 
-                outputBuffer[outputIndex + 0] = point5;
+                ws.XYOutsetBuffer[0] = point5;
 
-                if (colorBuffer != null) {
-                    colorBuffer[outputIndex + 0] = ColorAt(1, 0);
-                }
-                return vertexCount;
+                ws.UVOutsetBuffer[0] = new Vector2(1, 0);
+                for (int i = 0; i < vertexCount; i++)
+                    ws.UVInsetBuffer[i] = new Vector2(0, 0);
+
+                return new InsetOutsetCount(vertexCount, 1, false);
             }
             else {
                 switch (Alignment) {
@@ -573,37 +624,26 @@ namespace LilyPath
                         pointA = new Vector2(a.X + w2 * edgeABt.X, a.Y + w2 * edgeABt.Y);
                         pointC = new Vector2(c.X + w2 * edgeBCt.X, c.Y + w2 * edgeBCt.Y);
 
-                        outputBuffer[outputIndex + 1] = new Vector2(b.X - w2 * edgeABt.X, b.Y - w2 * edgeABt.Y);
-                        outputBuffer[outputIndex + 2] = new Vector2(b.X - w2 * edgeBCt.X, b.Y - w2 * edgeBCt.Y);
+                        ws.XYOutsetBuffer[0] = new Vector2(b.X - w2 * edgeABt.X, b.Y - w2 * edgeABt.Y);
+                        ws.XYOutsetBuffer[1] = new Vector2(b.X - w2 * edgeBCt.X, b.Y - w2 * edgeBCt.Y);
 
-                        if (colorBuffer != null) {
-                            colorBuffer[outputIndex + 1] = ColorAt(1, 0);
-                            colorBuffer[outputIndex + 2] = ColorAt(1, 0);
-                        }
-                        vertexCount = 3;
+                        vertexCount = 2;
                         break;
 
                     case PenAlignment.Inset:
                         pointA = new Vector2(a.X + Width * edgeABt.X, a.Y + Width * edgeABt.Y);
                         pointC = new Vector2(c.X + Width * edgeBCt.X, c.Y + Width * edgeBCt.Y);
 
-                        outputBuffer[outputIndex + 1] = b;
+                        ws.XYOutsetBuffer[0] = b;
 
-                        if (colorBuffer != null) {
-                            colorBuffer[outputIndex + 1] = ColorAt(1, 0);
-                        }
-                        vertexCount = 2;
+                        vertexCount = 1;
                         break;
 
                     case PenAlignment.Outset:
-                        outputBuffer[outputIndex + 1] = new Vector2(b.X - Width * edgeABt.X, b.Y - Width * edgeABt.Y);
-                        outputBuffer[outputIndex + 2] = new Vector2(b.X - Width * edgeBCt.X, b.Y - Width * edgeBCt.Y);
+                        ws.XYOutsetBuffer[0] = new Vector2(b.X - Width * edgeABt.X, b.Y - Width * edgeABt.Y);
+                        ws.XYOutsetBuffer[1] = new Vector2(b.X - Width * edgeBCt.X, b.Y - Width * edgeBCt.Y);
 
-                        if (colorBuffer != null) {
-                            colorBuffer[outputIndex + 1] = ColorAt(1, 0);
-                            colorBuffer[outputIndex + 2] = ColorAt(1, 0);
-                        }
-                        vertexCount = 3;
+                        vertexCount = 2;
                         break;
                 }
 
@@ -620,12 +660,13 @@ namespace LilyPath
                     point0 = new Vector2(pointA.X + t0 * edgeAB.X, pointA.Y + t0 * edgeAB.Y);
                 }
 
-                outputBuffer[outputIndex + 0] = point0;
+                ws.XYInsetBuffer[0] = point0;
 
-                if (colorBuffer != null) {
-                    colorBuffer[outputIndex + 0] = ColorAt(0, 0);
-                }
-                return vertexCount;
+                ws.UVInsetBuffer[0] = new Vector2(0, 0);
+                for (int i = 0; i < vertexCount; i++)
+                    ws.UVOutsetBuffer[i] = new Vector2(1, 0);
+
+                return new InsetOutsetCount(1, vertexCount, true);
             }
         }
 
@@ -639,7 +680,7 @@ namespace LilyPath
             return Cross2D(b - a, c - b) < 0;
         }
 
-        internal int ComputeStartPoint (Vector2[] outputBuffer, Color[] colorBuffer, int outputIndex, Vector2 a, Vector2 b)
+        internal int ComputeStartPoint (Vector2 a, Vector2 b, PenWorkspace ws)
         {
             float w2 = Width / 2;
 
@@ -656,25 +697,23 @@ namespace LilyPath
                     break;
             }
 
-            if (colorBuffer != null) {
-                colorBuffer[outputIndex + 0] = ColorAt(0, 0);
-                colorBuffer[outputIndex + 1] = ColorAt(1, 0);
-            }
+            ws.UVBuffer[0] = new Vector2(0, 0);
+            ws.UVBuffer[1] = new Vector2(1, 0);
 
             switch (Alignment) {
                 case PenAlignment.Center:
-                    outputBuffer[outputIndex + 0] = new Vector2(a.X + w2 * edgeABt.X, a.Y + w2 * edgeABt.Y);
-                    outputBuffer[outputIndex + 1] = new Vector2(a.X - w2 * edgeABt.X, a.Y - w2 * edgeABt.Y);
+                    ws.XYBuffer[0] = new Vector2(a.X + w2 * edgeABt.X, a.Y + w2 * edgeABt.Y);
+                    ws.XYBuffer[1] = new Vector2(a.X - w2 * edgeABt.X, a.Y - w2 * edgeABt.Y);
                     return 2;
 
                 case PenAlignment.Inset:
-                    outputBuffer[outputIndex + 0] = new Vector2(a.X + Width * edgeABt.X, a.Y + Width * edgeABt.Y);
-                    outputBuffer[outputIndex + 1] = a;
+                    ws.XYBuffer[0] = new Vector2(a.X + Width * edgeABt.X, a.Y + Width * edgeABt.Y);
+                    ws.XYBuffer[1] = a;
                     return 2;
 
                 case PenAlignment.Outset:
-                    outputBuffer[outputIndex + 0] = a;
-                    outputBuffer[outputIndex + 0] = new Vector2(a.X - Width * edgeABt.X, a.Y - Width * edgeABt.Y);
+                    ws.XYBuffer[0] = a;
+                    ws.XYBuffer[1] = new Vector2(a.X - Width * edgeABt.X, a.Y - Width * edgeABt.Y);
                     return 2;
 
                 default:
@@ -682,7 +721,7 @@ namespace LilyPath
             }
         }
 
-        internal int ComputeEndPoint (Vector2[] outputBuffer, Color[] colorBuffer, int outputIndex, Vector2 a, Vector2 b)
+        internal int ComputeEndPoint (Vector2 a, Vector2 b, PenWorkspace ws)
         {
             float w2 = Width / 2;
 
@@ -699,25 +738,23 @@ namespace LilyPath
                     break;
             }
 
-            if (colorBuffer != null) {
-                colorBuffer[outputIndex + 0] = ColorAt(0, 0);
-                colorBuffer[outputIndex + 1] = ColorAt(1, 0);
-            }
+            ws.UVBuffer[0] = new Vector2(0, 0);
+            ws.UVBuffer[1] = new Vector2(1, 0);
 
             switch (Alignment) {
                 case PenAlignment.Center:
-                    outputBuffer[outputIndex + 0] = new Vector2(b.X + w2 * edgeABt.X, b.Y + w2 * edgeABt.Y);
-                    outputBuffer[outputIndex + 1] = new Vector2(b.X - w2 * edgeABt.X, b.Y - w2 * edgeABt.Y);
+                    ws.XYBuffer[0] = new Vector2(b.X + w2 * edgeABt.X, b.Y + w2 * edgeABt.Y);
+                    ws.XYBuffer[1] = new Vector2(b.X - w2 * edgeABt.X, b.Y - w2 * edgeABt.Y);
                     return 2;
 
                 case PenAlignment.Inset:
-                    outputBuffer[outputIndex + 0] = new Vector2(b.X + Width * edgeABt.X, b.Y + Width * edgeABt.Y);
-                    outputBuffer[outputIndex + 1] = b;
+                    ws.XYBuffer[0] = new Vector2(b.X + Width * edgeABt.X, b.Y + Width * edgeABt.Y);
+                    ws.XYBuffer[1] = b;
                     return 2;
 
                 case PenAlignment.Outset:
-                    outputBuffer[outputIndex + 0] = b;
-                    outputBuffer[outputIndex + 0] = new Vector2(b.X - Width * edgeABt.X, b.Y - Width * edgeABt.Y);
+                    ws.XYBuffer[0] = b;
+                    ws.XYBuffer[1] = new Vector2(b.X - Width * edgeABt.X, b.Y - Width * edgeABt.Y);
                     return 2;
 
                 default:
