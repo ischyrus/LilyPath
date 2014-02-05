@@ -1,24 +1,82 @@
-﻿using System;
-using System.Collections.Generic;
-using LilyPath;
+﻿using LilyPath;
 using LilyPath.Pens;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System;
+using System.Collections.Generic;
 
 namespace LilyPathDemo
 {
     class TestSheets
     {
-        private static void SetupDrawBatch (DrawBatch drawBatch)
+        private static void SetupDrawBatch(DrawBatch drawBatch)
         {
             drawBatch.Begin(DrawSortMode.Deferred, null, null, null, GetCommonRasterizerState(), null, Matrix.Identity);
         }
 
+        [TestSheet("Dashed Lines")]
+        public static void DashedLineds(DrawBatch drawBatch)
+        {
+            SetupDrawBatch(drawBatch);
+
+            Vector2 start = new Vector2(0, 0);
+            Vector2 end = new Vector2(55, 55);
+
+            Pen p = new Pen(new SolidColorBrush(Color.Blue), 8, false);
+            drawBatch.DrawLine(p, start, end);
+
+            Pen w = new Pen(Brush.White, 4, false);
+
+            double y = end.Y - start.Y;
+            double x = end.X - start.X;
+            double angle = Math.Atan(y / x);
+            double length = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
+
+            if (length <= 40 && length > 8)
+            {
+                Vector2 segmentStart = Add(start, angle, 4);
+                Vector2 segmentEnd = Add(segmentStart, angle, (float)length - 8f);
+                drawBatch.DrawLine(w, segmentStart, segmentEnd);
+            }
+            else
+            {
+                length -= 20;
+                Vector2 segmentStart = Add(start, angle, 20);
+
+                do
+                {
+                    float l = (float)Math.Max(0, Math.Min(length - 20, 50));
+                    if (l == 0)
+                    {
+                        break;
+                    }
+
+                    Vector2 segmentEnd = Add(segmentStart, angle, l);
+                    drawBatch.DrawLine(w, segmentStart, segmentEnd);
+
+                    segmentStart = Add(segmentEnd, angle, 20);
+                    length -= 70;
+                } while (length > 0);
+
+            }
+
+            drawBatch.End();
+        }
+
+        private static Vector2 Add(Vector2 start, double angle, float length)
+        {
+            float x3 = start.X + (length * (float)Math.Cos(angle));
+            float y3 = start.Y + (length * (float)Math.Sin(angle));
+
+            return new Vector2(x3, y3);
+        }
+
         [TestSheet("Primitive Shapes")]
-        public static void DrawPrimitiveShapes (DrawBatch drawBatch)
+        public static void DrawPrimitiveShapes(DrawBatch drawBatch)
         {
             List<Vector2> wavy = new List<Vector2>();
-            for (int i = 0; i < 20; i++) {
+            for (int i = 0; i < 20; i++)
+            {
                 if (i % 2 == 0)
                     wavy.Add(new Vector2(50 + i * 10, 100));
                 else
@@ -38,10 +96,11 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Outline Shapes")]
-        public static void DrawOutlineShapes (DrawBatch drawBatch)
+        public static void DrawOutlineShapes(DrawBatch drawBatch)
         {
             List<Vector2> wavy = new List<Vector2>();
-            for (int i = 0; i < 20; i++) {
+            for (int i = 0; i < 20; i++)
+            {
                 if (i % 2 == 0)
                     wavy.Add(new Vector2(50 + i * 10, 100));
                 else
@@ -49,7 +108,8 @@ namespace LilyPathDemo
             }
 
             Pen thickBlue = new Pen(Color.Blue, 15);
-            Pen thickRed = new Pen(Color.Red, 15) {
+            Pen thickRed = new Pen(Color.Red, 15)
+            {
                 EndCap = LineCap.Square,
                 StartCap = LineCap.Square,
             };
@@ -73,15 +133,18 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Pen Alignment")]
-        public static void DrawLineAlignment (DrawBatch drawBatch)
+        public static void DrawLineAlignment(DrawBatch drawBatch)
         {
-            Pen insetPen = new Pen(Color.MediumTurquoise, 10) {
+            Pen insetPen = new Pen(Color.MediumTurquoise, 10)
+            {
                 Alignment = PenAlignment.Inset
             };
-            Pen centerPen = new Pen(Color.MediumTurquoise, 10) {
+            Pen centerPen = new Pen(Color.MediumTurquoise, 10)
+            {
                 Alignment = PenAlignment.Center
             };
-            Pen outsetPen = new Pen(Color.MediumTurquoise, 10) {
+            Pen outsetPen = new Pen(Color.MediumTurquoise, 10)
+            {
                 Alignment = PenAlignment.Outset
             };
 
@@ -102,7 +165,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Filled Shapes")]
-        public static void DrawFilledShapes (DrawBatch drawBatch)
+        public static void DrawFilledShapes(DrawBatch drawBatch)
         {
             SetupDrawBatch(drawBatch);
 
@@ -116,7 +179,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Primitive Arcs")]
-        public static void DrawPrimitiveArcs (DrawBatch drawBatch)
+        public static void DrawPrimitiveArcs(DrawBatch drawBatch)
         {
             SetupDrawBatch(drawBatch);
 
@@ -148,7 +211,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Primitive Arcs 2")]
-        public static void DrawPrimitiveArcs2 (DrawBatch drawBatch)
+        public static void DrawPrimitiveArcs2(DrawBatch drawBatch)
         {
             SetupDrawBatch(drawBatch);
 
@@ -196,7 +259,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Arcs")]
-        public static void DrawArcs (DrawBatch drawBatch)
+        public static void DrawArcs(DrawBatch drawBatch)
         {
             Pen thickPen = new Pen(Color.Blue, 15);
 
@@ -230,7 +293,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Arcs 2")]
-        public static void DrawArcs2 (DrawBatch drawBatch)
+        public static void DrawArcs2(DrawBatch drawBatch)
         {
             Pen thickPen = new Pen(Color.Blue, 15);
 
@@ -280,7 +343,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Primitive Closed Arcs")]
-        public static void DrawPrimitiveClosedArcs (DrawBatch drawBatch)
+        public static void DrawPrimitiveClosedArcs(DrawBatch drawBatch)
         {
             SetupDrawBatch(drawBatch);
 
@@ -312,7 +375,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Closed Arcs")]
-        public static void DrawClosedArcs (DrawBatch drawBatch)
+        public static void DrawClosedArcs(DrawBatch drawBatch)
         {
             Pen thickPen = new Pen(Color.Blue, 15);
 
@@ -346,7 +409,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Filled Arcs")]
-        public static void DrawFilledArcs (DrawBatch drawBatch)
+        public static void DrawFilledArcs(DrawBatch drawBatch)
         {
             SetupDrawBatch(drawBatch);
 
@@ -380,23 +443,27 @@ namespace LilyPathDemo
         private static Texture2D _xor6;
 
         [TestSheet("Texture Fill")]
-        public static void DrawTextureFill (DrawBatch drawBatch)
+        public static void DrawTextureFill(DrawBatch drawBatch)
         {
             if (_xor6 == null)
                 _xor6 = BuildXorTexture(drawBatch.GraphicsDevice, 6);
 
             TextureBrush brush1 = new TextureBrush(_xor6);
-            TextureBrush brush2 = new TextureBrush(_xor6) {
+            TextureBrush brush2 = new TextureBrush(_xor6)
+            {
                 Transform = Matrix.CreateTranslation(-50f / _xor6.Width, -175f / _xor6.Height, 0)
             };
-            TextureBrush brush3 = new TextureBrush(_xor6) {
+            TextureBrush brush3 = new TextureBrush(_xor6)
+            {
                 Transform = Matrix.CreateScale(.25f, .5f, 1f)
             };
-            TextureBrush brush4 = new TextureBrush(_xor6) {
+            TextureBrush brush4 = new TextureBrush(_xor6)
+            {
                 Transform = Matrix.CreateRotationZ((float)Math.PI / 4)
             };
             TextureBrush brush5 = new TextureBrush(_xor6, .5f);
-            TextureBrush brush6 = new TextureBrush(_xor6) {
+            TextureBrush brush6 = new TextureBrush(_xor6)
+            {
                 Color = Color.Purple
             };
 
@@ -413,7 +480,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Primitive Ellipses")]
-        public static void DrawPrimitiveEllipses (DrawBatch drawBatch)
+        public static void DrawPrimitiveEllipses(DrawBatch drawBatch)
         {
             SetupDrawBatch(drawBatch);
 
@@ -441,7 +508,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Ellipses")]
-        public static void DrawEllipses (DrawBatch drawBatch)
+        public static void DrawEllipses(DrawBatch drawBatch)
         {
             Pen bluePen = new Pen(Color.Blue, 10);
             Pen redPen = new Pen(Color.Red, 10);
@@ -472,7 +539,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Filled Ellipses")]
-        public static void DrawFilledEllipses (DrawBatch drawBatch)
+        public static void DrawFilledEllipses(DrawBatch drawBatch)
         {
             SetupDrawBatch(drawBatch);
 
@@ -500,7 +567,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Quadratic Bezier Curves")]
-        public static void DrawQuadBeziers (DrawBatch drawBatch)
+        public static void DrawQuadBeziers(DrawBatch drawBatch)
         {
             Pen bluePen = new Pen(Color.Blue, 15);
             Pen pointPen = new Pen(Color.Gray, 4);
@@ -547,7 +614,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Cubic Bezier Curves")]
-        public static void DrawCubicBeziers (DrawBatch drawBatch)
+        public static void DrawCubicBeziers(DrawBatch drawBatch)
         {
             Pen bluePen = new Pen(Color.Blue, 15);
             Pen pointPen = new Pen(Color.Gray, 4);
@@ -585,7 +652,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Gradient Pens")]
-        public static void DrawGradientPens (DrawBatch drawBatch)
+        public static void DrawGradientPens(DrawBatch drawBatch)
         {
             SetupDrawBatch(drawBatch);
 
@@ -605,21 +672,24 @@ namespace LilyPathDemo
         private static GraphicsPath[] _lillypads;
 
         [TestSheet("Water Lily")]
-        public static void DrawWaterLily (DrawBatch drawBatch)
+        public static void DrawWaterLily(DrawBatch drawBatch)
         {
             Vector2 center = new Vector2(300, 250);
 
-            if (_outerFlower == null) {
+            if (_outerFlower == null)
+            {
                 Pen pen = new Pen(Color.Pink, 15) { Alignment = PenAlignment.Outset };
                 _outerFlower = CreateFlowerGP(pen, center, 10, 150, 100, 0);
             }
 
-            if (_innerFlower == null) {
+            if (_innerFlower == null)
+            {
                 Pen pen = new Pen(Color.HotPink, 10) { Alignment = PenAlignment.Outset };
                 _innerFlower = CreateFlowerGP(pen, center, 15, 100, 50, 0);
             }
 
-            if (_lillypads == null) {
+            if (_lillypads == null)
+            {
                 _lillypads = new GraphicsPath[3];
                 Pen pen = new Pen(Color.Green, 15) { Alignment = PenAlignment.Center, LineJoin = LineJoin.Bevel };
 
@@ -644,22 +714,25 @@ namespace LilyPathDemo
         private static GraphicsPath _lilly2_innerFlower;
 
         [TestSheet("Water Lily 2")]
-        public static void DrawWaterLily2 (DrawBatch drawBatch)
+        public static void DrawWaterLily2(DrawBatch drawBatch)
         {
             Vector2 center = new Vector2(200, 200);
 
-            if (_lilly2_pad == null) {
+            if (_lilly2_pad == null)
+            {
                 Pen pen = new Pen(Color.Green, 15) { Alignment = PenAlignment.Center };
                 _lilly2_padBuilder = BuildLillyPad(center, 150, 0);
                 _lilly2_pad = _lilly2_padBuilder.Stroke(pen, PathType.Closed);
             }
 
-            if (_lilly2_outerFlower == null) {
+            if (_lilly2_outerFlower == null)
+            {
                 Pen pen = new Pen(Color.White * 0.75f, 15) { Alignment = PenAlignment.Outset };
                 _lilly2_outerFlower = CreateFlowerGP(pen, center, 8, 120, 100, (float)(Math.PI / 8));
             }
 
-            if (_lilly2_innerFlower == null) {
+            if (_lilly2_innerFlower == null)
+            {
                 Pen pen = new Pen(Color.MediumPurple * 0.5f, 10) { Alignment = PenAlignment.Outset };
                 _lilly2_innerFlower = CreateFlowerGP(pen, center, 16, 105, 60, 0);
             }
@@ -680,7 +753,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Graphics Path 1")]
-        public static void DrawGraphicsPath1 (DrawBatch drawBatch)
+        public static void DrawGraphicsPath1(DrawBatch drawBatch)
         {
             Pen thickPen = new Pen(Color.Green, 15);
 
@@ -718,7 +791,7 @@ namespace LilyPathDemo
         }
 
         [TestSheet("Graphics Path Outline")]
-        public static void DrawGraphicsPathOutline (DrawBatch drawBatch)
+        public static void DrawGraphicsPathOutline(DrawBatch drawBatch)
         {
             Pen thickPen = new Pen(Color.Green, 15);
 
@@ -807,29 +880,31 @@ namespace LilyPathDemo
             drawBatch.End();
         }
 
-        private static List<Vector2> ShiftPath (List<Vector2> path, float x, float y)
+        private static List<Vector2> ShiftPath(List<Vector2> path, float x, float y)
         {
             for (int i = 0; i < path.Count; i++)
                 path[i] = new Vector2(path[i].X + x, path[i].Y + y);
             return path;
         }
 
-        private static RasterizerState GetCommonRasterizerState ()
+        private static RasterizerState GetCommonRasterizerState()
         {
-            return new RasterizerState() {
+            return new RasterizerState()
+            {
                 FillMode = DemoState.FillMode,
                 MultiSampleAntiAlias = DemoState.MultisampleAA,
             };
         }
 
-        private static GraphicsPath CreateFlowerGP (Pen pen, Vector2 center, int petalCount, float petalLength, float petalWidth, float rotation)
+        private static GraphicsPath CreateFlowerGP(Pen pen, Vector2 center, int petalCount, float petalLength, float petalWidth, float rotation)
         {
             List<Vector2> points = StarPoints(center, petalCount / 2, petalLength, petalLength, rotation, false);
 
             PathBuilder builder = new PathBuilder();
             builder.AddPoint(center);
 
-            foreach (Vector2 point in points) {
+            foreach (Vector2 point in points)
+            {
                 builder.AddArcByPoint(point, petalWidth / 2);
                 builder.AddArcByPoint(center, petalWidth / 2);
             }
@@ -837,7 +912,7 @@ namespace LilyPathDemo
             return builder.Stroke(pen, PathType.Closed);
         }
 
-        private static PathBuilder BuildLillyPad (Vector2 center, int radius, float rotation)
+        private static PathBuilder BuildLillyPad(Vector2 center, int radius, float rotation)
         {
             float segment = (float)(Math.PI * 2 / 32);
 
@@ -850,7 +925,7 @@ namespace LilyPathDemo
             return builder;
         }
 
-        private static GraphicsPath CreateLillyPadGP (Pen pen, Vector2 center, int radius, float rotation)
+        private static GraphicsPath CreateLillyPadGP(Pen pen, Vector2 center, int radius, float rotation)
         {
             float segment = (float)(Math.PI * 2 / 32);
 
@@ -863,14 +938,15 @@ namespace LilyPathDemo
             return builder.Stroke(pen, PathType.Closed);
         }
 
-        private static List<Vector2> StarPoints (Vector2 center, int pointCount, float outerRadius, float innerRadius, float rotation, bool close)
+        private static List<Vector2> StarPoints(Vector2 center, int pointCount, float outerRadius, float innerRadius, float rotation, bool close)
         {
             List<Vector2> points = new List<Vector2>();
 
             int limit = (close) ? pointCount * 2 + 1 : pointCount * 2;
 
             float rot = (float)((Math.PI * 2) / (pointCount * 2));
-            for (int i = 0; i < limit; i++) {
+            for (int i = 0; i < limit; i++)
+            {
                 float si = (float)Math.Sin(-i * rot + Math.PI + rotation);
                 float ci = (float)Math.Cos(-i * rot + Math.PI + rotation);
 
@@ -883,7 +959,7 @@ namespace LilyPathDemo
             return points;
         }
 
-        private static Texture2D BuildXorTexture (GraphicsDevice device, int bits)
+        private static Texture2D BuildXorTexture(GraphicsDevice device, int bits)
         {
             if (bits < 1 || bits > 8)
                 throw new ArgumentException("Xor texture must have between 1 and 8 bits", "bits");
@@ -891,8 +967,10 @@ namespace LilyPathDemo
             Texture2D tex = new Texture2D(device, 1 << bits, 1 << bits);
             Color[] data = new Color[tex.Width * tex.Height];
 
-            for (int y = 0; y < tex.Height; y++) {
-                for (int x = 0; x < tex.Width; x++) {
+            for (int y = 0; y < tex.Height; y++)
+            {
+                for (int x = 0; x < tex.Width; x++)
+                {
                     float lum = ((x << (8 - bits)) ^ (y << (8 - bits))) / 255f;
                     data[y * tex.Width + x] = new Color(lum, lum, lum);
                 }
